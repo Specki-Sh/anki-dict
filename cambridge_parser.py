@@ -231,7 +231,7 @@ def update_word_dict(
         word_dict[word].append(
             {
                 "POS": pos,
-                ".data": {
+                "data": {
                     "definitions": [],
                     "definitions_translations": [],
                     "examples": [],
@@ -250,7 +250,7 @@ def update_word_dict(
             }
         )
 
-    last_appended_data = word_dict[word][-1][".data"]
+    last_appended_data = word_dict[word][-1]["data"]
     last_appended_data["definitions"].append(
         remove_blanks_from_str(definition.strip(": ")) if definition is not None else ""
     )
@@ -461,7 +461,7 @@ def define(
                 i += 1
             uk_ipa, uk_audio_links = get_phonetics(header_block)
 
-            # .data gathered from the word header
+            # data gathered from the word header
             (
                 pos_level,
                 pos_labels_and_codes,
