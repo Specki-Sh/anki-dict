@@ -13,8 +13,6 @@ IMAGE_LINK_T = str
 LEVEL_T = str
 UK_IPA_T = list[str]
 UK_AUDIO_LINKS_T = list[str]
-US_IPA_T = list[str]
-US_AUDIO_LINKS_T = list[str]
 ALT_TERMS_T = list[str]
 DOMAINS_T = list[str]
 EXAMPLES_T = list[str]
@@ -31,8 +29,6 @@ POS_T = list[str]
 class POSFields(TypedDict):
     UK_IPA: list[UK_IPA_T]
     UK_audio_links: list[UK_AUDIO_LINKS_T]
-    US_IPA: list[US_IPA_T]
-    US_audio_links: list[US_AUDIO_LINKS_T]
     alt_terms: list[ALT_TERMS_T]
     definitions: list[DEFINITION_T]
     definitions_translations: list[DEFINITION_TRANSLATION_T]
@@ -138,13 +134,11 @@ def get_tags(
 
 def get_phonetics(
     header_block: Optional[bs4.Tag],
-) -> tuple[UK_IPA_T, US_IPA_T, UK_AUDIO_LINKS_T, US_AUDIO_LINKS_T]:
+) -> tuple[UK_IPA_T, UK_AUDIO_LINKS_T]:
     uk_ipa: UK_IPA_T = []
-    us_ipa: US_IPA_T = []
     uk_audio_links: UK_AUDIO_LINKS_T = []
-    us_audio_links: US_AUDIO_LINKS_T = []
     if header_block is None:
-        return uk_ipa, us_ipa, uk_audio_links, us_audio_links
+        return uk_ipa, uk_audio_links
 
     audio_block = header_block.find_all("span", {"class": "daud"})
     for daud in audio_block:
@@ -159,8 +153,6 @@ def get_phonetics(
         result_audio_link = f"{LINK_PREFIX}/{audio_source_link}"
         if "uk" in parent_class:
             uk_audio_links.append(result_audio_link)
-        elif "us" in parent_class:
-            us_audio_links.append(result_audio_link)
 
     ipa = header_block.find_all("span", {"class": "pron dpron"})
 
@@ -173,11 +165,8 @@ def get_phonetics(
         else:
             prev_ipa_parrent = ipa_parent
 
-        if "uk" in ipa_parent:
-            uk_ipa.append(child.text)
-        else:
-            us_ipa.append(child.text)
-    return uk_ipa, us_ipa, uk_audio_links, us_audio_links
+        uk_ipa.append(child.text)
+    return uk_ipa, uk_audio_links
 
 
 def concatenate_tags(
@@ -224,9 +213,7 @@ def update_word_dict(
     domains: Optional[DOMAINS_T] = None,
     image_link: Optional[IMAGE_LINK_T] = None,
     uk_ipa: Optional[UK_IPA_T] = None,
-    us_ipa: Optional[US_IPA_T] = None,
     uk_audio_links: Optional[UK_AUDIO_LINKS_T] = None,
-    us_audio_links: Optional[US_AUDIO_LINKS_T] = None,
 ):
     def remove_blanks_from_str(src: str) -> str:
         return re.sub(BLANKS_REMOVING_PATTERN, " ", src.strip())
@@ -244,15 +231,13 @@ def update_word_dict(
         word_dict[word].append(
             {
                 "POS": pos,
-                "data": {
+                ".data": {
                     "definitions": [],
                     "definitions_translations": [],
                     "examples": [],
                     "examples_translations": [],
                     "UK_IPA": [],
-                    "US_IPA": [],
                     "UK_audio_links": [],
-                    "US_audio_links": [],
                     "image_links": [],
                     "alt_terms": [],
                     "irregular_forms": [],
@@ -265,7 +250,7 @@ def update_word_dict(
             }
         )
 
-    last_appended_data = word_dict[word][-1]["data"]
+    last_appended_data = word_dict[word][-1][".data"]
     last_appended_data["definitions"].append(
         remove_blanks_from_str(definition.strip(": ")) if definition is not None else ""
     )
@@ -283,14 +268,8 @@ def update_word_dict(
     last_appended_data["UK_IPA"].append(
         remove_blanks_from_list(uk_ipa) if uk_ipa is not None else []
     )
-    last_appended_data["US_IPA"].append(
-        remove_blanks_from_list(us_ipa) if us_ipa is not None else []
-    )
     last_appended_data["UK_audio_links"].append(
         remove_blanks_from_list(uk_audio_links) if uk_audio_links is not None else []
-    )
-    last_appended_data["US_audio_links"].append(
-        remove_blanks_from_list(us_audio_links) if us_audio_links is not None else []
     )
     last_appended_data["examples"].append(
         remove_blanks_from_list(examples) if examples is not None else []
@@ -480,9 +459,9 @@ def define(
                 if i_pos == "phrasal verb":  # after "phrasal verb" goes verb that was
                     i += 1  # used in a construction of this phrasal verb. We skip it.
                 i += 1
-            uk_ipa, us_ipa, uk_audio_links, us_audio_links = get_phonetics(header_block)
+            uk_ipa, uk_audio_links = get_phonetics(header_block)
 
-            # data gathered from the word header
+            # .data gathered from the word header
             (
                 pos_level,
                 pos_labels_and_codes,
@@ -627,16 +606,11 @@ def define(
                     domains=current_word_domains,
                     image_link=image_link,
                     uk_ipa=uk_ipa,
-                    us_ipa=us_ipa,
                     uk_audio_links=uk_audio_links,
-                    us_audio_links=us_audio_links,
                 )
         res.append(word_info)
     return res
 
 
-if __name__ == "__main__":
-    from pprint import pprint
-
-    res = define(word="speak up", dictionary_type="english", bilingual_vairation="")
-    pprint(res)
+def get_word(word):
+    return define(word=word, dictionary_type="english", bilingual_vairation="")
